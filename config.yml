@@ -1,0 +1,4 @@
+dataset: 14res
+max_size: 30000
+min_freq: 1
+val_rate: 0.2
