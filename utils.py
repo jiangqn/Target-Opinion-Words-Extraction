@@ -7,6 +7,12 @@ UNK = '<unk>'
 PAD_INDEX = 0
 UNK_INDEX = 1
 
+def sentence_clip(sentence):
+    mask = (sentence != PAD_INDEX)
+    sentence_lens = mask.long().sum(dim=1, keepdim=False)
+    max_len = sentence_lens.max().item()
+    return sentence[:, :max_len]
+
 class Vocab(object):
 
     def __init__(self):
