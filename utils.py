@@ -3,6 +3,7 @@ import numpy as np
 import os
 import torch
 from torch.utils.data import Dataset
+from sklearn.metrics.scorer import precision_score, recall_score, f1_score
 
 PAD = '<pad>'
 UNK = '<unk>'
@@ -75,9 +76,9 @@ def data_transform(text_data, word2index, path):
         max_len = max(max_len, len(sentence))
     num = len(sentences)
     for i in range(num):
-        sentences[i] = sentences[i] + [0] * (num - len(sentences[i]))
-        targets[i] = targets[i] + [0] * (num - len(targets[i]))
-        labels[i] = labels[i] + [-1] * (num - len(labels[i]))
+        sentences[i] = sentences[i] + [0] * (max_len - len(sentences[i]))
+        targets[i] = targets[i] + [0] * (max_len - len(targets[i]))
+        labels[i] = labels[i] + [-1] * (max_len - len(labels[i]))
     sentences = np.asarray(sentences, dtype=np.int32)
     targets = np.asarray(targets, dtype=np.int32)
     labels = np.asarray(labels, dtype=np.int32)
@@ -110,3 +111,28 @@ class ToweDataset(Dataset):
 
     def __getitem__(self, item):
         return self.sentences[item], self.targets[item], self.labels[item]
+
+def eval(tagger, data_loader):
+    preds_collection = []
+    labels_collection = []
+    for i, data in enumerate(data_loader):
+        sentences, targets, labels = data
+        sentences, targets, labels = sentences.cuda(), targets.cuda(), labels.cuda()
+        sentences = sentence_clip(sentences)
+        targets = targets[:, 0:sentences.size(1)].contiguous()
+        labels = labels[:, 0:sentences.size(1)].contiguous()
+        logits = tagger(sentences, targets)
+        logits = logits.view(-1, 3)
+        preds = logits.argmax(dim=-1)
+        labels = labels.view(-1)
+        preds_collection.append(preds)
+        labels_collection.append(labels)
+    preds_collection = torch.cat(preds_collection, dim=0)
+    labels_collection = torch.cat(labels_collection, dim=0)
+    mask = labels_collection != -1
+    preds_collection = preds_collection.masked_select(mask).cpu().numpy()
+    labels_collection = labels_collection.masked_select(mask).cpu().numpy()
+    precision = precision_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
+    recall = recall_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
+    f1 = f1_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
+    return precision, recall, f1

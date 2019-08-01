@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from utils import sentence_clip, PAD_INDEX
+from utils import PAD_INDEX
 
 class ConvTagger(nn.Module):
 
@@ -19,14 +19,12 @@ class ConvTagger(nn.Module):
                 out_channels=kernel_num,
                 kernel_size=kernel_size
             ))
-        self.rep_size = sum(self.kernel_sizes) * kernel_num
+        self.rep_size = len(self.kernel_sizes) * kernel_num
         self.dropout = dropout
         self.output_projection = nn.Linear(self.rep_size, 3)
 
     def forward(self, sentences, targets):
-        sentences = sentence_clip(sentences)
-        targets = targets[:, 0:sentences.size(1)].contiguous()
-        targets = torch.max(targets, torch.tensor(1).long().to(targets.device))
+        targets = targets.masked_fill(targets > 1, 1)
         mask = sentences != PAD_INDEX
         sentences = self.embedding(sentences)
         targets = self.bio_embedding(targets)
@@ -35,7 +33,8 @@ class ConvTagger(nn.Module):
         for kernel_size, conv in zip(self.kernel_sizes, self.kernels):
             left_pad = (kernel_size - 1) // 2
             right_pad = kernel_size // 2
-            feature_map.append(conv(F.pad(sentences, [left_pad, right_pad, 0, 0, 0, 0])))
+            t = conv(F.pad(sentences, [left_pad, right_pad, 0, 0, 0, 0]))
+            feature_map.append(t)
         feature_map = torch.cat(feature_map, dim=1).transpose(1, 2)
         feature_map = torch.relu(feature_map)
         logits = self.output_projection(feature_map)

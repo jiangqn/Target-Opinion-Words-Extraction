@@ -4,15 +4,20 @@ import torch
 from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader
+import numpy as np
 from model import ConvTagger
-from utils import ToweDataset
+from utils import ToweDataset, sentence_clip, eval
+from visualizer import Visualizer
 
 config = yaml.load(open('config.yml'))
+os.environ['CUDA_VISIBLE_DEVICES'] = str(config['gpu'])
 
 base_path = os.path.join('./data/', config['dataset'])
 train_data_path = os.path.join(base_path, 'train.npz')
 val_data_path = os.path.join(base_path, 'val.npz')
 log_path = os.path.join(base_path, 'log.yml')
+glove_path = os.path.join(base_path, 'glove.npy')
+plot_path = './plots/training.jpg'
 
 train_data = ToweDataset(train_data_path)
 val_data = ToweDataset(val_data_path)
@@ -36,6 +41,7 @@ embedding = nn.Embedding(
     num_embeddings=log['vocab_size'],
     embedding_dim=config['embed_size']
 )
+embedding.weight.data.copy_(torch.from_numpy(np.load(glove_path)))
 
 tagger = ConvTagger(
     embedding=embedding,
@@ -51,14 +57,25 @@ criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
 optimizer = optim.Adam(tagger.parameters(), lr=config['learning_rate'])
 
+visualizer = Visualizer(['epoch', 'precision', 'recall', 'f1'], plot_path)
+
 for epoch in range(config['num_epoches']):
     for i, data in enumerate(train_loader):
         sentences, targets, labels = data
         sentences, targets, labels = sentences.cuda(), targets.cuda(), labels.cuda()
+        sentences = sentence_clip(sentences)
+        targets = targets[:, 0:sentences.size(1)].contiguous()
+        labels = labels[:, 0:sentences.size(1)].contiguous()
         logits = tagger(sentences, targets)
         logits = logits.view(-1, 3)
         labels = labels.view(-1)
         loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
-        print('[epoch %d] [step %d] [loss %.4f]' % (epoch, i, loss.item()))
+        if i % 5 == 0:
+            print('[epoch %d] [step %d] [loss %.4f]' % (epoch, i, loss.item()))
+    precision, recall, f1 = eval(tagger, val_loader)
+    print('precision: %.4f\trecall: %.4f\tf1: %.4f' % (precision, recall, f1))
+    visualizer.add([epoch, precision, recall, f1])
+
+visualizer.plot()
