@@ -1,6 +1,8 @@
 import operator
 import numpy as np
 import os
+import torch
+from torch.utils.data import Dataset
 
 PAD = '<pad>'
 UNK = '<unk>'
@@ -92,3 +94,19 @@ def load_glove(path, vocab_size, word2index):
                 glove[word2index[content[0]]] = np.array(list(map(float, content[1:])))
     glove[PAD_INDEX, :] = 0
     return glove
+
+class ToweDataset(Dataset):
+
+    def __init__(self, path):
+        super(ToweDataset, self).__init__()
+        data = np.load(path)
+        self.sentences = torch.from_numpy(data['sentences']).long()
+        self.targets = torch.from_numpy(data['targets']).long()
+        self.labels = torch.from_numpy(data['labels']).long()
+        self.len = self.sentences.size(0)
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, item):
+        return self.sentences[item], self.targets[item], self.labels[item]
