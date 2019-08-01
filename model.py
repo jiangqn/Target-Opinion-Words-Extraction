@@ -10,12 +10,12 @@ class ConvTagger(nn.Module):
         self.embed_size = embedding.embedding_dim
         self.embedding = embedding
         self.bio_embed_size = bio_embed_size
-        self.bio_embedding = nn.Embedding(2, bio_embed_size)
+        self.bio_embedding = nn.Embedding(3, bio_embed_size)
         self.kernel_sizes = kernel_sizes
         self.kernels = nn.ModuleList()
         for kernel_size in kernel_sizes:
             self.kernels.append(nn.Conv1d(
-                in_channels=self.embed_size + self.bio_embed_size,
+                in_channels=self.embed_size,
                 out_channels=kernel_num,
                 kernel_size=kernel_size
             ))
@@ -24,11 +24,11 @@ class ConvTagger(nn.Module):
         self.output_projection = nn.Linear(self.rep_size, 3)
 
     def forward(self, sentences, targets):
-        targets = targets.masked_fill(targets > 1, 1)
+        # targets = targets.masked_fill(targets > 1, 1)
         mask = sentences != PAD_INDEX
-        sentences = self.embedding(sentences)
+        sentences = self.embedding(sentences).transpose(1, 2)
         targets = self.bio_embedding(targets)
-        sentences = torch.cat((sentences, targets), dim=-1).transpose(1, 2)
+        # sentences = torch.cat((sentences, targets), dim=-1).transpose(1, 2)
         feature_map = []
         for kernel_size, conv in zip(self.kernel_sizes, self.kernels):
             left_pad = (kernel_size - 1) // 2

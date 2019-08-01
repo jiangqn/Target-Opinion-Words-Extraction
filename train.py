@@ -5,8 +5,9 @@ from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader
 import numpy as np
+import pickle
 from model import ConvTagger
-from utils import ToweDataset, sentence_clip, eval
+from utils import ToweDataset, sentence_clip, eval, show
 from visualizer import Visualizer
 
 config = yaml.load(open('config.yml'))
@@ -18,6 +19,10 @@ val_data_path = os.path.join(base_path, 'val.npz')
 log_path = os.path.join(base_path, 'log.yml')
 glove_path = os.path.join(base_path, 'glove.npy')
 plot_path = './plots/training.jpg'
+index2word_path = os.path.join(base_path, 'index2word.pickle')
+
+with open(index2word_path, 'rb') as handle:
+    index2word = pickle.load(handle)
 
 train_data = ToweDataset(train_data_path)
 val_data = ToweDataset(val_data_path)
@@ -57,7 +62,7 @@ criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
 optimizer = optim.Adam(tagger.parameters(), lr=config['learning_rate'])
 
-visualizer = Visualizer(['epoch', 'precision', 'recall', 'f1'], plot_path)
+visualizer = Visualizer(['epoch', 'loss', 'precision', 'recall', 'f1'], plot_path)
 
 for epoch in range(config['num_epoches']):
     for i, data in enumerate(train_loader):
@@ -66,6 +71,8 @@ for epoch in range(config['num_epoches']):
         sentences = sentence_clip(sentences)
         targets = targets[:, 0:sentences.size(1)].contiguous()
         labels = labels[:, 0:sentences.size(1)].contiguous()
+        show(sentences[0], targets[0], labels[0])
+        raise ValueError('debug')
         logits = tagger(sentences, targets)
         logits = logits.view(-1, 3)
         labels = labels.view(-1)
@@ -76,6 +83,6 @@ for epoch in range(config['num_epoches']):
             print('[epoch %d] [step %d] [loss %.4f]' % (epoch, i, loss.item()))
     precision, recall, f1 = eval(tagger, val_loader)
     print('precision: %.4f\trecall: %.4f\tf1: %.4f' % (precision, recall, f1))
-    visualizer.add([epoch, precision, recall, f1])
+    visualizer.add([epoch, 0.4, precision, recall, f1])
 
 visualizer.plot()

@@ -136,3 +136,10 @@ def eval(tagger, data_loader):
     recall = recall_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
     f1 = f1_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
     return precision, recall, f1
+
+def show(sentence, target, label):
+    sentence, target, label = sentence.tolist(), target.tolist(), label.tolist()
+    length = min([x if label[x]==-1 else 1000 for x in range(len(label))])
+    print(sentence[0:length])
+    print(target[0:length])
+    print(label[0:length])
