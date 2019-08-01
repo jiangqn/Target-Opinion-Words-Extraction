@@ -77,7 +77,7 @@ def data_transform(text_data, word2index, path):
     for i in range(num):
         sentences[i] = sentences[i] + [0] * (num - len(sentences[i]))
         targets[i] = targets[i] + [0] * (num - len(targets[i]))
-        labels[i] = labels[i] + [0] * (num - len(labels[i]))
+        labels[i] = labels[i] + [-1] * (num - len(labels[i]))
     sentences = np.asarray(sentences, dtype=np.int32)
     targets = np.asarray(targets, dtype=np.int32)
     labels = np.asarray(labels, dtype=np.int32)

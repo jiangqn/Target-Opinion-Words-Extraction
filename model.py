@@ -6,7 +6,7 @@ from utils import sentence_clip, PAD_INDEX
 class ConvTagger(nn.Module):
 
     def __init__(self, embedding, bio_embed_size, kernel_sizes, kernel_num, dropout):
-        super(ConvTagger).__init__()
+        super(ConvTagger, self).__init__()
         self.embed_size = embedding.embedding_dim
         self.embedding = embedding
         self.bio_embed_size = bio_embed_size
@@ -25,8 +25,8 @@ class ConvTagger(nn.Module):
 
     def forward(self, sentences, targets):
         sentences = sentence_clip(sentences)
-        targets = targets[:, sentences.size(1)].contiguous()
-        targets = torch.max(targets, torch.tensor(1).long())
+        targets = targets[:, 0:sentences.size(1)].contiguous()
+        targets = torch.max(targets, torch.tensor(1).long().to(targets.device))
         mask = sentences != PAD_INDEX
         sentences = self.embedding(sentences)
         targets = self.bio_embedding(targets)

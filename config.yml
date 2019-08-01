@@ -3,3 +3,11 @@ max_size: 30000
 min_freq: 1
 val_rate: 0.2
 glove_path: ./data/glove.840B.300d.txt
+embed_size: 300
+bio_embed_size: 50
+kernel_sizes: [3, 4, 5]
+kernel_num: 50
+dropout: 0.3
+num_epoches: 10
+batch_size: 64
+learning_rate: 0.001
