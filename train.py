@@ -71,15 +71,13 @@ for epoch in range(config['num_epoches']):
         sentences = sentence_clip(sentences)
         targets = targets[:, 0:sentences.size(1)].contiguous()
         labels = labels[:, 0:sentences.size(1)].contiguous()
-        show(sentences[0], targets[0], labels[0])
-        raise ValueError('debug')
         logits = tagger(sentences, targets)
         logits = logits.view(-1, 3)
         labels = labels.view(-1)
         loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
-        if i % 5 == 0:
+        if i % 100 == 0:
             print('[epoch %d] [step %d] [loss %.4f]' % (epoch, i, loss.item()))
     precision, recall, f1 = eval(tagger, val_loader)
     print('precision: %.4f\trecall: %.4f\tf1: %.4f' % (precision, recall, f1))
