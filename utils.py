@@ -130,6 +130,7 @@ def eval(tagger, data_loader, criterion):
         labels = labels.view(-1)
         loss = criterion(logits, labels).item()
         batch_size = (labels != -1).long().sum().item()
+        # print(batch_size)
         total_loss += loss * batch_size
         total_samples += batch_size
         preds_collection.append(preds)

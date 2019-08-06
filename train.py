@@ -8,6 +8,7 @@ import numpy as np
 import pickle
 from model import ConvTagger, FocalLoss
 from utils import ToweDataset, sentence_clip, eval, show
+from sklearn.metrics.scorer import precision_score, recall_score, f1_score
 from visualizer import Visualizer
 
 config = yaml.load(open('config.yml'))
@@ -59,14 +60,18 @@ tagger = ConvTagger(
 
 tagger = tagger.cuda()
 
-criterion = nn.CrossEntropyLoss(ignore_index=-1)
-focal_loss = FocalLoss(gamma=2.0, ignore_index=-1)
+# criterion = nn.CrossEntropyLoss(ignore_index=-1)
+criterion = FocalLoss(gamma=2.0, ignore_index=-1)
 
-optimizer = optim.Adam(tagger.parameters(), lr=config['learning_rate'])
+optimizer = optim.Adam(tagger.parameters(), lr=config['learning_rate'], weight_decay=config['l2_reg'])
 
-visualizer = Visualizer(['epoch', 'train_loss', 'val_loss', 'precision', 'recall', 'f1'], plot_path)
+visualizer = Visualizer(plot_path)
+
+max_val_f1_score = 0
 
 for epoch in range(config['num_epoches']):
+    preds_collection = []
+    labels_collection = []
     total_loss = 0
     total_samples = 0
     for i, data in enumerate(train_loader):
@@ -79,19 +84,33 @@ for epoch in range(config['num_epoches']):
         labels = labels[:, 0:sentences.size(1)].contiguous()
         logits = tagger(sentences, targets)
         logits = logits.view(-1, 3)
+        preds = logits.argmax(dim=-1)
         labels = labels.view(-1)
-        loss = focal_loss(logits, labels)
-        # loss = criterion(logits, labels)
+        loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
         batch_size = (labels != -1).long().sum().item()
         total_loss += batch_size * loss.item()
         total_samples += batch_size
+        preds_collection.append(preds)
+        labels_collection.append(labels)
         # if i % 100 == 0:
         #     print('[epoch %d] [step %d] [loss %.4f]' % (epoch, i, loss.item()))
+    preds_collection = torch.cat(preds_collection, dim=0)
+    labels_collection = torch.cat(labels_collection, dim=0)
+    mask = labels_collection != -1
+    preds_collection = preds_collection.masked_select(mask).cpu().numpy()
+    labels_collection = labels_collection.masked_select(mask).cpu().numpy()
+    train_precision = precision_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
+    train_recall = recall_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
+    train_f1 = f1_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
     train_loss = total_loss / total_samples
-    val_loss, precision, recall, f1 = eval(tagger, val_loader, criterion)
-    print('train_loss: %.4f\tval_loss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f' % (train_loss, val_loss, precision, recall, f1))
-    visualizer.add([epoch, train_loss, val_loss, precision, recall, f1])
+    print('epoch: %d\tval_loss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f' % (epoch, train_loss, train_precision, train_recall, train_f1))
+    val_loss, val_precision, val_recall, val_f1 = eval(tagger, val_loader, criterion)
+    print('epoch: %d\tval_loss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f\n' % (epoch, val_loss, val_precision, val_recall, val_f1))
+    visualizer.add(epoch, train_loss, train_precision, train_recall, train_f1, val_loss, val_precision, val_recall, val_f1)
+    max_val_f1_score = max(max_val_f1_score, val_f1)
+
+print('max val f1_score: %.4f' % max_val_f1_score)
 
 visualizer.plot()
