@@ -2,6 +2,7 @@ import yaml
 import os
 import pickle
 import numpy as np
+import random
 from utils import Vocab, data_transform, load_glove
 
 # load config
@@ -27,6 +28,8 @@ train_data = open(train_src_path, 'r', encoding='utf-8').readlines()[1:]
 test_data = open(test_src_path, 'r', encoding='utf-8').readlines()[1:]
 
 # split training and validation datasets
+
+random.shuffle(train_data)
 
 num = len(train_data)
 val_num = int(num * config['val_rate'])

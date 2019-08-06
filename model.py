@@ -40,10 +40,7 @@ class ConvTagger(nn.Module):
         targets = self.bio_embedding(targets)
         feature_map = torch.cat((sentences, targets), dim=-1).transpose(1, 2)
         for i, layer in enumerate(self.conv_layers):
-            if i == 0:
-                feature_map = layer(feature_map)
-            else:
-                feature_map = layer(feature_map) + feature_map
+            feature_map = layer(feature_map)
         feature_map = feature_map.transpose(1, 2)
         logits = self.output_projection(feature_map)
         logits = logits.masked_fill(mask.unsqueeze(-1)==0, 0)
@@ -56,6 +53,7 @@ class ConvLayer(nn.Module):
         self.input_size = input_size
         self.output_size = len(kernel_sizes) * kernel_num
         self.kernel_sizes = kernel_sizes
+        self.norm = nn.BatchNorm1d(input_size)
         self.kernels = nn.ModuleList()
         for kernel_size in kernel_sizes:
             self.kernels.append(nn.Conv1d(
@@ -66,6 +64,9 @@ class ConvLayer(nn.Module):
         self.dropout = dropout
 
     def forward(self, input):
+        # input = input.transpose(1, 2)
+        input = self.norm(input)
+        # input = input.transpose(1, 2)
         feature_map = []
         for kernel_size, kernel in zip(self.kernel_sizes, self.kernels):
             left_pad = (kernel_size - 1) // 2
@@ -73,6 +74,8 @@ class ConvLayer(nn.Module):
             feature_map.append(torch.relu(kernel(F.pad(input, [left_pad, right_pad, 0, 0, 0, 0]))))
         feature_map = torch.cat(feature_map, dim=1)
         feature_map = F.dropout(feature_map)
+        if input.size() == feature_map.size():
+            feature_map = feature_map + input
         return feature_map
 
 class RecurrentTagger(nn.Module):

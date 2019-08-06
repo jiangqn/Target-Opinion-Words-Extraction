@@ -61,7 +61,7 @@ tagger = ConvTagger(
 tagger = tagger.cuda()
 
 # criterion = nn.CrossEntropyLoss(ignore_index=-1)
-criterion = FocalLoss(gamma=2.0, ignore_index=-1)
+criterion = FocalLoss(gamma=1.0, ignore_index=-1)
 
 optimizer = optim.Adam(tagger.parameters(), lr=config['learning_rate'], weight_decay=config['l2_reg'])
 
