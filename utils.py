@@ -104,6 +104,8 @@ class ToweDataset(Dataset):
         self.sentences = torch.from_numpy(data['sentences']).long()
         self.targets = torch.from_numpy(data['targets']).long()
         self.labels = torch.from_numpy(data['labels']).long()
+        self.targets = torch.min(self.targets, torch.tensor(1))
+        self.labels = torch.min(self.labels, torch.tensor(1))
         self.len = self.sentences.size(0)
 
     def __len__(self):
@@ -125,7 +127,7 @@ def eval(tagger, data_loader, criterion):
         targets = targets[:, 0:sentences.size(1)].contiguous()
         labels = labels[:, 0:sentences.size(1)].contiguous()
         logits = tagger(sentences, targets)
-        logits = logits.view(-1, 3)
+        logits = logits.view(-1, 2)
         preds = logits.argmax(dim=-1)
         labels = labels.view(-1)
         loss = criterion(logits, labels).item()
@@ -140,9 +142,9 @@ def eval(tagger, data_loader, criterion):
     mask = labels_collection != -1
     preds_collection = preds_collection.masked_select(mask).cpu().numpy()
     labels_collection = labels_collection.masked_select(mask).cpu().numpy()
-    precision = precision_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
-    recall = recall_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
-    f1 = f1_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
+    precision = precision_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1], average='macro')
+    recall = recall_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1], average='macro')
+    f1 = f1_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1], average='macro')
     loss = total_loss / total_samples
     return loss, precision, recall, f1
 

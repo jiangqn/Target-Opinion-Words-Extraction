@@ -31,7 +31,7 @@ class ConvTagger(nn.Module):
                 kernel_num=self.kernel_num,
                 dropout=self.dropout
             ))
-        self.output_projection = nn.Linear(self.feature_size, 3)
+        self.output_projection = nn.Linear(self.feature_size, 2)
 
     def forward(self, sentences, targets):
         targets = targets.masked_fill(targets > 1, 1)
