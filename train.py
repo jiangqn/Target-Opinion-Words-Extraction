@@ -6,7 +6,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 import numpy as np
 import pickle
-from model import ConvTagger
+from model import ConvTagger, FocalLoss
 from utils import ToweDataset, sentence_clip, eval, show
 from visualizer import Visualizer
 
@@ -60,6 +60,7 @@ tagger = ConvTagger(
 tagger = tagger.cuda()
 
 criterion = nn.CrossEntropyLoss(ignore_index=-1)
+focal_loss = FocalLoss(gamma=2.0, ignore_index=-1)
 
 optimizer = optim.Adam(tagger.parameters(), lr=config['learning_rate'])
 
@@ -79,7 +80,8 @@ for epoch in range(config['num_epoches']):
         logits = tagger(sentences, targets)
         logits = logits.view(-1, 3)
         labels = labels.view(-1)
-        loss = criterion(logits, labels)
+        loss = focal_loss(logits, labels)
+        # loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
         batch_size = (labels != -1).long().sum().item()
