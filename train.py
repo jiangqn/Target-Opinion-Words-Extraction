@@ -53,6 +53,7 @@ tagger = ConvTagger(
     bio_embed_size=config['bio_embed_size'],
     kernel_sizes=config['kernel_sizes'],
     kernel_num=config['kernel_num'],
+    num_layers=config['num_layers'],
     dropout=config['dropout']
 )
 
@@ -62,10 +63,14 @@ criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
 optimizer = optim.Adam(tagger.parameters(), lr=config['learning_rate'])
 
-visualizer = Visualizer(['epoch', 'loss', 'precision', 'recall', 'f1'], plot_path)
+visualizer = Visualizer(['epoch', 'train_loss', 'val_loss', 'precision', 'recall', 'f1'], plot_path)
 
 for epoch in range(config['num_epoches']):
+    total_loss = 0
+    total_samples = 0
     for i, data in enumerate(train_loader):
+        tagger.train()
+        optimizer.zero_grad()
         sentences, targets, labels = data
         sentences, targets, labels = sentences.cuda(), targets.cuda(), labels.cuda()
         sentences = sentence_clip(sentences)
@@ -77,10 +82,14 @@ for epoch in range(config['num_epoches']):
         loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
-        if i % 100 == 0:
-            print('[epoch %d] [step %d] [loss %.4f]' % (epoch, i, loss.item()))
-    precision, recall, f1 = eval(tagger, val_loader)
-    print('precision: %.4f\trecall: %.4f\tf1: %.4f' % (precision, recall, f1))
-    visualizer.add([epoch, 0.4, precision, recall, f1])
+        batch_size = (labels != -1).long().sum().item()
+        total_loss += batch_size * loss.item()
+        total_samples += batch_size
+        # if i % 100 == 0:
+        #     print('[epoch %d] [step %d] [loss %.4f]' % (epoch, i, loss.item()))
+    train_loss = total_loss / total_samples
+    val_loss, precision, recall, f1 = eval(tagger, val_loader, criterion)
+    print('train_loss: %.4f\tval_loss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f' % (train_loss, val_loss, precision, recall, f1))
+    visualizer.add([epoch, train_loss, val_loss, precision, recall, f1])
 
 visualizer.plot()

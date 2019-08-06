@@ -7,8 +7,9 @@ embed_size: 300
 bio_embed_size: 100
 kernel_sizes: [3, 4, 5]
 kernel_num: 100
-dropout: 0.1
-num_epoches: 20
+num_layers: 3
+dropout: 0.3
+num_epoches: 30
 batch_size: 64
 learning_rate: 0.001
 gpu: 0

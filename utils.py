@@ -112,9 +112,12 @@ class ToweDataset(Dataset):
     def __getitem__(self, item):
         return self.sentences[item], self.targets[item], self.labels[item]
 
-def eval(tagger, data_loader):
+def eval(tagger, data_loader, criterion):
+    tagger.eval()
     preds_collection = []
     labels_collection = []
+    total_loss = 0
+    total_samples = 0
     for i, data in enumerate(data_loader):
         sentences, targets, labels = data
         sentences, targets, labels = sentences.cuda(), targets.cuda(), labels.cuda()
@@ -125,6 +128,10 @@ def eval(tagger, data_loader):
         logits = logits.view(-1, 3)
         preds = logits.argmax(dim=-1)
         labels = labels.view(-1)
+        loss = criterion(logits, labels).item()
+        batch_size = (labels != -1).long().sum().item()
+        total_loss += loss * batch_size
+        total_samples += batch_size
         preds_collection.append(preds)
         labels_collection.append(labels)
     preds_collection = torch.cat(preds_collection, dim=0)
@@ -135,7 +142,8 @@ def eval(tagger, data_loader):
     precision = precision_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
     recall = recall_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
     f1 = f1_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1, 2], average='macro')
-    return precision, recall, f1
+    loss = total_loss / total_samples
+    return loss, precision, recall, f1
 
 def show(sentence, target, label, index2word):
     sentence, target, label = sentence.tolist(), target.tolist(), label.tolist()
