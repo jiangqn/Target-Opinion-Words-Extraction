@@ -6,8 +6,8 @@ from torch import optim
 from torch.utils.data import DataLoader
 import numpy as np
 import pickle
-from model import ConvTagger, FocalLoss, BinaryFocalLoss, BCELoss
-from utils import ToweDataset, sentence_clip, eval, show
+from model import ConvTagger, RecurrentTagger, FocalLoss
+from utils import ToweDataset, sentence_clip, eval, show, error_analysis
 from sklearn.metrics.scorer import precision_score, recall_score, f1_score
 from visualizer import Visualizer
 
@@ -49,13 +49,22 @@ embedding = nn.Embedding(
 )
 embedding.weight.data.copy_(torch.from_numpy(np.load(glove_path)))
 
-tagger = ConvTagger(
+# tagger = ConvTagger(
+#     embedding=embedding,
+#     bio_embed_size=config['bio_embed_size'],
+#     kernel_sizes=config['kernel_sizes'],
+#     kernel_num=config['kernel_num'],
+#     num_layers=config['num_layers'],
+#     dropout=config['dropout']
+# )
+
+tagger = RecurrentTagger(
     embedding=embedding,
     bio_embed_size=config['bio_embed_size'],
-    kernel_sizes=config['kernel_sizes'],
-    kernel_num=config['kernel_num'],
+    hidden_size=config['hidden_size'],
     num_layers=config['num_layers'],
-    dropout=config['dropout']
+    dropout=config['dropout'],
+    bidirectional=config['bidirectional']
 )
 
 tagger = tagger.cuda()
@@ -83,6 +92,7 @@ for epoch in range(config['num_epoches']):
         sentences = sentence_clip(sentences)
         targets = targets[:, 0:sentences.size(1)].contiguous()
         labels = labels[:, 0:sentences.size(1)].contiguous()
+        # error_analysis(sentences[0], targets[0], labels[0], tagger, index2word)
         logits = tagger(sentences, targets)
         logits = logits.view(-1, 2)
         preds = logits.argmax(dim=-1)

@@ -5,10 +5,10 @@ val_rate: 0.2
 glove_path: ./data/glove.840B.300d.txt
 embed_size: 300
 bio_embed_size: 100
-kernel_sizes: [3, 4, 5]
-kernel_num: 100
-num_layers: 4
-dropout: 0.5
+hidden_size: 300
+num_layers: 1
+dropout: 0.3
+bidirectional: True
 l2_reg: 0.0001
 num_epoches: 40
 batch_size: 64

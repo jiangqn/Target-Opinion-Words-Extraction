@@ -153,3 +153,14 @@ def show(sentence, target, label, index2word):
     print(sentence[0:length])
     print(target[0:length])
     print(label[0:length])
+
+def error_analysis(sentence, target, label, model, index2word):
+    pred = model(sentence.unsqueeze(0), target.unsqueeze(0)).squeeze(0).argmax(dim=-1).tolist()
+    sentence, target, label = sentence.tolist(), target.tolist(), label.tolist()
+    length = min([x if label[x]==-1 else 1000 for x in range(len(label))])
+    text = ''.join([index2word[x] + ' ' for x in sentence[0:length]])
+    print(text)
+    print(sentence[0:length])
+    print(target[0:length])
+    print(label[0:length])
+    print(pred[0:length])

@@ -34,7 +34,6 @@ class ConvTagger(nn.Module):
         self.output_projection = nn.Linear(self.feature_size, 2)
 
     def forward(self, sentences, targets):
-        targets = targets.masked_fill(targets > 1, 1)
         mask = sentences != PAD_INDEX
         sentences = self.embedding(sentences)
         targets = self.bio_embedding(targets)
@@ -64,9 +63,7 @@ class ConvLayer(nn.Module):
         self.dropout = dropout
 
     def forward(self, input):
-        # input = input.transpose(1, 2)
         input = self.norm(input)
-        # input = input.transpose(1, 2)
         feature_map = []
         for kernel_size, kernel in zip(self.kernel_sizes, self.kernels):
             left_pad = (kernel_size - 1) // 2
@@ -80,11 +77,36 @@ class ConvLayer(nn.Module):
 
 class RecurrentTagger(nn.Module):
 
-    def __init__(self):
+    def __init__(self, embedding, bio_embed_size, hidden_size, num_layers, dropout, bidirectional):
         super(RecurrentTagger, self).__init__()
+        self.embed_size = embedding.embedding_dim
+        self.embedding = embedding
+        self.bio_embed_size = bio_embed_size
+        self.bio_embedding = nn.Embedding(2, bio_embed_size)
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.bidirectional = bidirectional
+        self.rnn = nn.LSTM(
+            input_size=self.embed_size + self.bio_embed_size,
+            hidden_size=self.hidden_size,
+            num_layers=self.num_layers,
+            batch_first=True,
+            dropout=self.dropout,
+            bidirectional=self.bidirectional
+        )
+        self.feature_size = (2 if bidirectional else 1) * hidden_size
+        self.output_projection = nn.Linear(self.feature_size, 2)
 
-    def forward(self, *input):
-        pass
+    def forward(self, sentences, targets):
+        mask = sentences != PAD_INDEX
+        sentences = self.embedding(sentences)
+        targets = self.bio_embedding(targets)
+        feature_map = torch.cat((sentences, targets), dim=-1)
+        feature_map, _ = self.rnn(feature_map)
+        logits = self.output_projection(feature_map)
+        logits = logits.masked_fill(mask.unsqueeze(-1) == 0, 0)
+        return logits
 
 
 class FocalLoss(nn.Module):
@@ -103,45 +125,6 @@ class FocalLoss(nn.Module):
         prob = torch.softmax(logits, dim=-1)
         loss = - one_hot * torch.log(prob) * (1 - prob).pow(self.gamma)
         loss = loss.sum(dim=1, keepdim=False)
-        if self.ignore_index != None:
-            loss = loss.masked_select(mask)
-        loss = loss.mean()
-        return loss
-
-class BinaryFocalLoss(nn.Module):
-
-    def __init__(self, alpha=0.5, gamma=2.0, ignore_index=None, eps=1e-4):
-        super(BinaryFocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.ignore_index = ignore_index
-        self.eps = eps
-
-    def forward(self, probs, labels):
-        if self.ignore_index != None:
-            mask = labels != self.ignore_index
-        labels = labels.float()
-        eps = torch.tensor(self.eps).to(labels.device)
-        loss = - self.alpha * labels * torch.log(probs + eps) * (1 - probs).pow(self.gamma) - \
-               (1 - self.alpha) * (1 - labels) * torch.log(1 - eps - probs) * probs.pow(self.gamma)
-        if self.ignore_index != None:
-            loss = loss.masked_select(mask)
-        loss = loss.mean()
-        return loss
-
-class BCELoss(nn.Module):
-
-    def __init__(self, ignore_index=None, eps=1e-4):
-        super(BCELoss, self).__init__()
-        self.ignore_index = ignore_index
-        self.eps = eps
-
-    def forward(self, probs, labels):
-        if self.ignore_index != None:
-            mask = labels != self.ignore_index
-        labels = labels.float()
-        eps = torch.tensor(self.eps).to(labels.device)
-        loss = - labels * torch.log(probs + eps) - (1 - labels) * torch.log(1 - eps - probs)
         if self.ignore_index != None:
             loss = loss.masked_select(mask)
         loss = loss.mean()
