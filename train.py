@@ -21,6 +21,7 @@ log_path = os.path.join(base_path, 'log.yml')
 glove_path = os.path.join(base_path, 'glove.npy')
 plot_path = './plots/training.jpg'
 index2word_path = os.path.join(base_path, 'index2word.pickle')
+save_path = os.path.join(base_path, 'tagger.pkl')
 
 with open(index2word_path, 'rb') as handle:
     index2word = pickle.load(handle)
@@ -120,7 +121,10 @@ for epoch in range(config['num_epoches']):
     val_loss, val_precision, val_recall, val_f1 = eval(tagger, val_loader, criterion)
     print('epoch: %d\tval_loss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f\n' % (epoch, val_loss, val_precision, val_recall, val_f1))
     visualizer.add(epoch, train_loss, train_precision, train_recall, train_f1, val_loss, val_precision, val_recall, val_f1)
-    max_val_f1_score = max(max_val_f1_score, val_f1)
+    if val_f1 > max_val_f1_score:
+        max_val_f1_score = val_f1
+        torch.save(tagger, save_path)
+        print('save model')
 
 print('max val f1_score: %.4f' % max_val_f1_score)
 
