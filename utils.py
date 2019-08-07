@@ -51,7 +51,7 @@ class Vocab(object):
                 index2word[index] = word
         return word2index, index2word
 
-BIOdict = {'O': 0, 'B': 1, 'I': 2}
+BIOdict = {'O': 0, 'B': 1, 'I': 1}
 
 def list_map(L, d):
     f = lambda x: d[x] if x in d else 0
@@ -104,8 +104,6 @@ class ToweDataset(Dataset):
         self.sentences = torch.from_numpy(data['sentences']).long()
         self.targets = torch.from_numpy(data['targets']).long()
         self.labels = torch.from_numpy(data['labels']).long()
-        self.targets = torch.min(self.targets, torch.tensor(1))
-        self.labels = torch.min(self.labels, torch.tensor(1))
         self.len = self.sentences.size(0)
 
     def __len__(self):
@@ -132,7 +130,6 @@ def eval(tagger, data_loader, criterion):
         labels = labels.view(-1)
         loss = criterion(logits, labels).item()
         batch_size = (labels != -1).long().sum().item()
-        # print(batch_size)
         total_loss += loss * batch_size
         total_samples += batch_size
         preds_collection.append(preds)

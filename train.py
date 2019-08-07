@@ -6,7 +6,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 import numpy as np
 import pickle
-from model import ConvTagger, FocalLoss
+from model import ConvTagger, FocalLoss, BinaryFocalLoss, BCELoss
 from utils import ToweDataset, sentence_clip, eval, show
 from sklearn.metrics.scorer import precision_score, recall_score, f1_score
 from visualizer import Visualizer
@@ -60,8 +60,9 @@ tagger = ConvTagger(
 
 tagger = tagger.cuda()
 
-# criterion = nn.CrossEntropyLoss(ignore_index=-1)
-criterion = FocalLoss(gamma=1.0, ignore_index=-1)
+criterion = nn.CrossEntropyLoss(ignore_index=-1)
+# criterion = FocalLoss(gamma=1.5, ignore_index=-1)
+# criterion = BinaryFocalLoss(alpha=1, gamma=2, ignore_index=-1)
 
 optimizer = optim.Adam(tagger.parameters(), lr=config['learning_rate'], weight_decay=config['l2_reg'])
 
