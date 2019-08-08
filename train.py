@@ -117,9 +117,9 @@ for epoch in range(config['num_epoches']):
     train_recall = recall_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1], average='macro')
     train_f1 = f1_score(y_true=labels_collection, y_pred=preds_collection, labels=[0, 1], average='macro')
     train_loss = total_loss / total_samples
-    print('epoch: %d\tval_loss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f' % (epoch, train_loss, train_precision, train_recall, train_f1))
+    print('epoch: %d\ttrain\tloss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f' % (epoch, train_loss, train_precision, train_recall, train_f1))
     val_loss, val_precision, val_recall, val_f1 = eval(tagger, val_loader, criterion)
-    print('epoch: %d\tval_loss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f\n' % (epoch, val_loss, val_precision, val_recall, val_f1))
+    print('epoch: %d\tval\tloss: %.4f\tprecision: %.4f\trecall: %.4f\tf1: %.4f\n' % (epoch, val_loss, val_precision, val_recall, val_f1))
     visualizer.add(epoch, train_loss, train_precision, train_recall, train_f1, val_loss, val_precision, val_recall, val_f1)
     if val_f1 > max_val_f1_score:
         max_val_f1_score = val_f1

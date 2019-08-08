@@ -99,13 +99,13 @@ class RecurrentTagger(nn.Module):
         self.output_projection = nn.Linear(self.feature_size, 2)
 
     def forward(self, sentences, targets):
-        mask = sentences != PAD_INDEX
+        # mask = sentences != PAD_INDEX
         sentences = self.embedding(sentences)
         targets = self.bio_embedding(targets)
         feature_map = torch.cat((sentences, targets), dim=-1)
         feature_map, _ = self.rnn(feature_map)
         logits = self.output_projection(feature_map)
-        logits = logits.masked_fill(mask.unsqueeze(-1) == 0, 0)
+        # logits = logits.masked_fill(mask.unsqueeze(-1) == 0, 0)
         return logits
 
 
